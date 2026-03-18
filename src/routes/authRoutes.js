@@ -1,17 +1,16 @@
 const express = require('express');
 const router = express.Router();
+const { register, login } = require('../controllers/authController');
 
-// Test endpoint (to confirm deployment works)
+// Test route (still there)
 router.get('/test', (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: 'Auth routes are live!',
-    serverTime: new Date().toISOString()
-  });
+  res.json({ success: true, message: 'Auth routes working!' });
 });
 
-// We'll add register & login here later
-// router.post('/register', ...)
-// router.post('/login', ...)
+// Register
+router.post('/register', register);
+
+// Login
+router.post('/login', login);
 
 module.exports = router;
