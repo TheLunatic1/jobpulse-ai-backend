@@ -1,11 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { Types } from 'mongoose';
 
-interface AuthenticatedRequest extends Request {
-  user?: { userId: string; role: string };
+export interface AuthenticatedRequest extends Request {
+  user?: {
+    userId: string;
+    role: string;
+  };
 }
 
-export const protect = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const protect = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   let token;
 
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
@@ -23,4 +27,16 @@ export const protect = (req: AuthenticatedRequest, res: Response, next: NextFunc
   } catch (err) {
     return res.status(401).json({ success: false, message: 'Not authorized - token invalid' });
   }
+};
+
+export const restrictTo = (...roles: string[]) => {
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    if (!req.user || !roles.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: `Access denied. Allowed roles: ${roles.join(', ')}`,
+      });
+    }
+    next();
+  };
 };

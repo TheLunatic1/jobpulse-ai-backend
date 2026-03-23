@@ -1,7 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
-// Define the interface for the User document
 interface IUser extends Document {
   name: string;
   email: string;
@@ -17,16 +16,12 @@ const userSchema = new Schema<IUser>({
   role: { type: String, enum: ['jobseeker', 'employer', 'admin'], default: 'jobseeker' },
 }, { timestamps: true });
 
-// Password hashing – modern async style (no next() needed)
 userSchema.pre('save', async function () {
-  // Only hash if password was modified
   if (!this.isModified('password')) return;
-
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
 });
 
-// Password comparison method
 userSchema.methods.matchPassword = async function (enteredPassword: string): Promise<boolean> {
   return await bcrypt.compare(enteredPassword, this.password);
 };
