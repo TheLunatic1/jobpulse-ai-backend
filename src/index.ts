@@ -12,7 +12,11 @@ import { createServer } from 'http';
 import { protect, restrictTo } from './middleware/authMiddleware';
 import Message from './models/Message';
 import aiRoutes from './routes/aiRoutes';
-
+import profileRoutes from './routes/profileRoutes';
+import savedJobRoutes from './routes/savedJobRoutes';
+import notificationRoutes from './routes/notificationRoutes';
+import companyRoutes from './routes/companyRoutes';
+import adminRoutes from './routes/adminRoutes';
 
 
 const app = express();
@@ -33,6 +37,11 @@ app.use('/api/jobs', jobRoutes);
 app.use('/api/applications', protect, applicationRoutes);
 app.use('/api/messages', protect, messageRoutes);
 app.use('/api/ai', protect, aiRoutes);
+app.use('/api/profile', profileRoutes);
+app.use('/api/jobs', savedJobRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/companies', companyRoutes);
+app.use('/api/admin', adminRoutes);
 
 // REST endpoint for admin broadcast (optional – can trigger from frontend)
 app.post('/api/admin/broadcast', protect, restrictTo('admin'), (req, res) => {

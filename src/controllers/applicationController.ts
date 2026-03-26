@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import Application from '../models/Application';
 import Job from '../models/Job';
+import User from '../models/User';
 import { AuthenticatedRequest } from '../middleware/authMiddleware';
 
 export const applyToJob = async (req: AuthenticatedRequest, res: Response) => {
@@ -69,6 +70,19 @@ export const updateApplicationStatus = async (req: AuthenticatedRequest, res: Re
     application.status = status;
     await application.save();
 
+    // Send notification to the applicant
+    const applicant = await User.findById(application.applicant);
+    if (applicant) {
+      applicant.notifications = applicant.notifications || [];
+      applicant.notifications.unshift({
+        message: `Your application for "${job.title}" has been ${status}`,
+        type: 'application',
+        read: false,
+        createdAt: new Date()
+      });
+      await applicant.save();
+    }
+
     res.json({ success: true, application });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -88,6 +102,32 @@ export const getMyApplications = async (req: AuthenticatedRequest, res: Response
 
     res.json({ success: true, applications });
   } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ==================== NEW: EMPLOYER APPLICATIONS ====================
+export const getEmployerApplications = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.user || req.user.role !== 'employer') {
+      return res.status(403).json({ success: false, message: 'Only employers can access this' });
+    }
+
+    const applications = await Application.find({})
+      .populate({
+        path: 'job',
+        match: { postedBy: req.user.userId },
+        select: 'title company location salary type'
+      })
+      .populate('applicant', 'name email')
+      .sort({ appliedAt: -1 });
+
+    // Filter out any null jobs (safety)
+    const filtered = applications.filter(app => app.job !== null);
+
+    res.json({ success: true, applications: filtered });
+  } catch (err: any) {
+    console.error(err);
     res.status(500).json({ success: false, message: err.message });
   }
 };

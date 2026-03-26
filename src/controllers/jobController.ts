@@ -4,22 +4,15 @@ import { AuthenticatedRequest } from '../middleware/authMiddleware';
 
 export const createJob = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ success: false, message: 'User not authenticated' });
-    }
+    if (!req.user) return res.status(401).json({ success: false, message: 'Not authenticated' });
 
     const job = await Job.create({
       ...req.body,
-      postedBy: req.user.userId,  // <-- fixed: use userId from JWT
+      postedBy: req.user.userId,
     });
 
-    res.status(201).json({
-      success: true,
-      message: 'Job posted successfully! Waiting for admin approval.',
-      job,
-    });
+    res.status(201).json({ success: true, message: 'Job posted successfully! Waiting for admin approval.', job });
   } catch (err: any) {
-    console.error('Job creation error:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -27,6 +20,25 @@ export const createJob = async (req: AuthenticatedRequest, res: Response) => {
 export const getApprovedJobs = async (req: Request, res: Response) => {
   try {
     const jobs = await Job.find({ status: 'approved' }).populate('postedBy', 'name');
+    res.json({ success: true, jobs });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// NEW: Search with filters
+export const searchJobs = async (req: Request, res: Response) => {
+  try {
+    const { title, location, type, minSalary } = req.query;
+
+    const query: any = { status: 'approved' };
+
+    if (title) query.title = { $regex: title, $options: 'i' };
+    if (location) query.location = { $regex: location, $options: 'i' };
+    if (type) query.type = type;
+    if (minSalary) query.salary = { $gte: minSalary };
+
+    const jobs = await Job.find(query).populate('postedBy', 'name');
     res.json({ success: true, jobs });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
@@ -45,16 +57,9 @@ export const getMyJobs = async (req: AuthenticatedRequest, res: Response) => {
 
 export const approveJob = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    if (!req.user || req.user.role !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Admin only' });
-    }
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ success: false, message: 'Admin only' });
 
-    const job = await Job.findByIdAndUpdate(
-      req.params.id,
-      { status: 'approved', approvedBy: req.user.userId },
-      { new: true }
-    );
-
+    const job = await Job.findByIdAndUpdate(req.params.id, { status: 'approved', approvedBy: req.user.userId }, { new: true });
     if (!job) return res.status(404).json({ success: false, message: 'Job not found' });
 
     res.json({ success: true, job });
@@ -65,16 +70,9 @@ export const approveJob = async (req: AuthenticatedRequest, res: Response) => {
 
 export const rejectJob = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    if (!req.user || req.user.role !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Admin only' });
-    }
+    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ success: false, message: 'Admin only' });
 
-    const job = await Job.findByIdAndUpdate(
-      req.params.id,
-      { status: 'rejected' },
-      { new: true }
-    );
-
+    const job = await Job.findByIdAndUpdate(req.params.id, { status: 'rejected' }, { new: true });
     if (!job) return res.status(404).json({ success: false, message: 'Job not found' });
 
     res.json({ success: true, job });
