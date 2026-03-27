@@ -1,18 +1,31 @@
 import express from 'express';
-import { createJob, getApprovedJobs, searchJobs, getMyJobs, approveJob, rejectJob, deleteJob } from '../controllers/jobController';
+import { 
+  createJob, 
+  getApprovedJobs, 
+  getAdminJobs, 
+  searchJobs, 
+  getMyJobs, 
+  approveJob, 
+  rejectJob, 
+  deleteJob 
+} from '../controllers/jobController';
+
 import { protect, restrictTo } from '../middleware/authMiddleware';
 
 const router = express.Router();
 
-// Public routes
-router.get('/', getApprovedJobs);
-router.get('/search', searchJobs);
+// ==================== PUBLIC ROUTES ====================
+router.get('/', getApprovedJobs);                    // Homepage & Find Jobs → only approved
+router.get('/search', searchJobs);                   // Public search
 
-// Protected employer routes
+// ==================== ADMIN ROUTE ====================
+router.get('/admin', protect, restrictTo('admin'), getAdminJobs);   // ← This is what AdminPanel will use
+
+// ==================== PROTECTED EMPLOYER ROUTES ====================
 router.post('/', protect, restrictTo('employer'), createJob);
 router.get('/my', protect, restrictTo('employer'), getMyJobs);
 
-// Admin routes
+// ==================== ADMIN ONLY ROUTES ====================
 router.patch('/:id/approve', protect, restrictTo('admin'), approveJob);
 router.patch('/:id/reject', protect, restrictTo('admin'), rejectJob);
 router.delete('/:id', protect, deleteJob);

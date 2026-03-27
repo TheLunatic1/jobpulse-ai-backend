@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import Job from '../models/Job';
 import { AuthenticatedRequest } from '../middleware/authMiddleware';
 
+// Create new job (Employer only)
 export const createJob = async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user) return res.status(401).json({ success: false, message: 'Not authenticated' });
@@ -11,26 +12,49 @@ export const createJob = async (req: AuthenticatedRequest, res: Response) => {
       postedBy: req.user.userId,
     });
 
-    res.status(201).json({ success: true, message: 'Job posted successfully! Waiting for admin approval.', job });
+    res.status(201).json({ 
+      success: true, 
+      message: 'Job posted successfully! Waiting for admin approval.', 
+      job 
+    });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
 
+// Public route - ONLY approved jobs (used by homepage & Find Jobs page)
 export const getApprovedJobs = async (req: Request, res: Response) => {
   try {
-    const jobs = await Job.find({ status: 'approved' }).populate('postedBy', 'name');
+    const jobs = await Job.find({ status: 'approved' })
+      .populate('postedBy', 'name')
+      .sort({ createdAt: -1 });
     res.json({ success: true, jobs });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// NEW: Search with filters
+// NEW: Admin-only route - returns ALL jobs (pending + approved + rejected)
+export const getAdminJobs = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Admin only' });
+    }
+
+    const jobs = await Job.find({})
+      .populate('postedBy', 'name')
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, jobs });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Search jobs (public - only approved)
 export const searchJobs = async (req: Request, res: Response) => {
   try {
     const { title, location, type, minSalary } = req.query;
-
     const query: any = { status: 'approved' };
 
     if (title) query.title = { $regex: title, $options: 'i' };
@@ -45,21 +69,30 @@ export const searchJobs = async (req: Request, res: Response) => {
   }
 };
 
+// Get employer's own jobs
 export const getMyJobs = async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user) return res.status(401).json({ success: false, message: 'Not authenticated' });
-    const jobs = await Job.find({ postedBy: req.user.userId });
+    const jobs = await Job.find({ postedBy: req.user.userId })
+      .sort({ createdAt: -1 });
     res.json({ success: true, jobs });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
 
+// Approve job (Admin only)
 export const approveJob = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ success: false, message: 'Admin only' });
+    if (!req.user || req.user.role !== 'admin') 
+      return res.status(403).json({ success: false, message: 'Admin only' });
 
-    const job = await Job.findByIdAndUpdate(req.params.id, { status: 'approved', approvedBy: req.user.userId }, { new: true });
+    const job = await Job.findByIdAndUpdate(
+      req.params.id, 
+      { status: 'approved', approvedBy: req.user.userId }, 
+      { new: true }
+    );
+
     if (!job) return res.status(404).json({ success: false, message: 'Job not found' });
 
     res.json({ success: true, job });
@@ -68,11 +101,18 @@ export const approveJob = async (req: AuthenticatedRequest, res: Response) => {
   }
 };
 
+// Reject job (Admin only)
 export const rejectJob = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    if (!req.user || req.user.role !== 'admin') return res.status(403).json({ success: false, message: 'Admin only' });
+    if (!req.user || req.user.role !== 'admin') 
+      return res.status(403).json({ success: false, message: 'Admin only' });
 
-    const job = await Job.findByIdAndUpdate(req.params.id, { status: 'rejected' }, { new: true });
+    const job = await Job.findByIdAndUpdate(
+      req.params.id, 
+      { status: 'rejected' }, 
+      { new: true }
+    );
+
     if (!job) return res.status(404).json({ success: false, message: 'Job not found' });
 
     res.json({ success: true, job });
@@ -81,6 +121,7 @@ export const rejectJob = async (req: AuthenticatedRequest, res: Response) => {
   }
 };
 
+// Delete job (Employer or Admin)
 export const deleteJob = async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user) return res.status(401).json({ success: false, message: 'Not authenticated' });

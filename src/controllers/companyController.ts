@@ -1,9 +1,21 @@
-import { Response } from 'express';
-import { AuthenticatedRequest } from '../middleware/authMiddleware';
+import { Request, Response } from 'express';
 import User from '../models/User';
 import Job from '../models/Job';
+import { AuthenticatedRequest } from '../middleware/authMiddleware';
 
-export const getCompanyProfile = async (req: AuthenticatedRequest, res: Response) => {
+export const getAllCompanies = async (req: Request, res: Response) => {
+  try {
+    const companies = await User.find({ role: 'employer' })
+      .select('companyName companyLogo companyDescription industry location bio _id')
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, companies });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+export const getCompanyProfile = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
