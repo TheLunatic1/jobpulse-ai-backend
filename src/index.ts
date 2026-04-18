@@ -42,6 +42,7 @@ app.use('/api/jobs', savedJobRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/companies', companyRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/messages', messageRoutes);
 
 // REST endpoint for admin broadcast (optional – can trigger from frontend)
 app.post('/api/admin/broadcast', protect, restrictTo('admin'), (req, res) => {
@@ -52,40 +53,58 @@ app.post('/api/admin/broadcast', protect, restrictTo('admin'), (req, res) => {
   res.json({ success: true, message: 'Broadcast sent to all users' });
 });
 
-// Socket.IO logic (unchanged + added history request)
+// Temporary test route to check if Message model works
+app.post('/api/messages/test-save', protect, async (req, res) => {
+  try {
+    const { senderId, receiverId, content, roomId } = req.body;
+
+    const message = await Message.create({
+      sender: senderId,
+      receiver: receiverId,
+      content,
+      roomId,
+    });
+
+    res.json({ success: true, message: 'Message saved successfully', data: message });
+  } catch (err: any) {
+    console.error('Test save error:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
+  console.log('🔌 User connected:', socket.id);
 
   socket.on('joinRoom', (roomId) => {
     socket.join(roomId);
-    console.log(`User ${socket.id} joined ${roomId}`);
+    console.log(`User joined room: ${roomId}`);
   });
 
   socket.on('sendMessage', async (data) => {
-    // Save to DB
-    const message = await Message.create({
-      roomId: data.roomId,
-      sender: data.senderId,
-      content: data.message,
-    });
+    try {
+      const { senderId, receiverId, content, roomId, senderName } = data;
 
-    io.to(data.roomId).emit('receiveMessage', {
-      ...data,
-      _id: message._id,
-      timestamp: message.timestamp,
-    });
-  });
+      if (!senderId || !receiverId || !content || !roomId) {
+        console.log('❌ Invalid message data');
+        return;
+      }
 
-  socket.on('getMessages', async ({ roomId }) => {
-    const messages = await Message.find({ roomId })
-      .populate('sender', 'name')
-      .sort({ timestamp: 1 })
-      .limit(50);
-    socket.emit('loadMessages', messages);
-  });
+      const message = await Message.create({
+        sender: senderId,
+        receiver: receiverId,
+        content: content.trim(),
+        roomId,
+      });
 
-  socket.on('adminBroadcast', (message) => {
-    io.emit('broadcast', { message, timestamp: new Date().toISOString() });
+      io.to(roomId).emit('receiveMessage', {
+        ...message.toObject(),
+        senderName: senderName || 'User',
+      });
+
+      console.log(`✅ Message saved to MongoDB in room ${roomId}`);
+    } catch (err: any) {
+      console.error('❌ Failed to save message:', err.message);
+    }
   });
 
   socket.on('disconnect', () => {
