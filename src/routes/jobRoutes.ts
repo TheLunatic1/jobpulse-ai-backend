@@ -22,7 +22,7 @@ router.get('/search', searchJobs);                   // Public search
 router.get('/admin', protect, restrictTo('admin'), getAdminJobs);   // ← This is what AdminPanel will use
 
 // ==================== PROTECTED EMPLOYER ROUTES ====================
-router.post('/', protect, restrictTo('employer'), createJob);
+router.post('/', protect, restrictTo('employer', 'admin'), createJob);
 router.get('/my', protect, restrictTo('employer'), getMyJobs);
 
 // ==================== ADMIN ONLY ROUTES ====================

@@ -1,8 +1,8 @@
-import { Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/authMiddleware';
-import User from '../models/User';
 import Job from '../models/Job';
 import Application from '../models/Application';
+import { Request, Response } from 'express';
+import User from '../models/User';
 
 export const getAdminStats = async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -54,6 +54,18 @@ export const getAllApplications = async (req: AuthenticatedRequest, res: Respons
       .sort({ appliedAt: -1 });
 
     res.json({ success: true, applications });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+
+export const deleteUser = async (req: Request, res: Response) => {
+  try {
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    res.json({ success: true, message: 'User deleted successfully' });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }
