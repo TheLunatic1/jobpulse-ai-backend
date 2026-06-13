@@ -1,5 +1,11 @@
 import dotenv from 'dotenv';
 dotenv.config({ path: '.env' });
+import dns from 'node:dns';
+try {
+  dns.setServers(['8.8.8.8', '8.8.4.4']);
+} catch (e) {
+  console.log('Failed to set DNS servers', e);
+}
 import express from 'express';
 import cors from 'cors';
 import connectDB from './config/db';
@@ -31,6 +37,11 @@ const io = new Server(httpServer, {
 
 app.use(cors());
 app.use(express.json());
+
+// Root route to verify server is running
+app.get('/', (req, res) => {
+  res.send('🚀 JobPulse API is running successfully!');
+});
 
 app.use('/api/auth', authRoutes);
 app.use('/api/jobs', jobRoutes);
