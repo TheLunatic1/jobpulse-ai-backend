@@ -3,7 +3,25 @@ import { protect } from '../middleware/authMiddleware';
 import Message from '../models/Message';
 import { AuthenticatedRequest } from '../middleware/authMiddleware';
 
+import User from '../models/User';
+
 const router = express.Router();
+
+// Get contacts for messaging
+router.get('/contacts/list', protect, async (req: AuthenticatedRequest, res) => {
+  try {
+    if (!req.user) return res.status(401).json({ success: false, message: 'Not authenticated' });
+    
+    const query = req.user.role === 'jobseeker' ? { role: 'employer' } : 
+                  req.user.role === 'employer' ? { role: 'jobseeker' } : 
+                  { _id: { $ne: req.user.userId } }; // admin sees all
+    
+    const contacts = await User.find(query).select('name email role');
+    res.json({ success: true, contacts });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: 'Failed to load contacts' });
+  }
+});
 
 // Get conversation between current user and another user
 router.get('/:userId', protect, async (req: AuthenticatedRequest, res) => {
