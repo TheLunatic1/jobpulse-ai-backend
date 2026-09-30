@@ -6,8 +6,7 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "start": "ts-node src/index.ts",
-    "build": "tsc",
-    "preinstall": "node dist/setup.js"
+    "build": "tsc"
   },
   "repository": {
     "type": "git",
